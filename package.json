@@ -9,21 +9,21 @@
     "repository": "github:kutuluk/js13k-ecs",
     "author": "Evgeniy Pavlov <mail@kutuluk.com>",
     "license": "MIT",
-    "version": "0.1.0",
-    "source": "src/index.js",
-    "main": "dist/index.js",
-    "module": "dist/index.m.js",
+    "version": "0.1.2",
+    "source": "src/ecs.js",
+    "main": "dist/ecs.js",
+    "module": "dist/ecs.m.js",
     "files": [
         "src",
         "dist"
     ],
     "scripts": {
-        "clean": "rimraf dist lib && mkdirp dist lib",
-        "microbundle": "microbundle --name ecs --sourcemap false && microbundle -o lib -f cjs --compress false",
-        "example": "microbundle -i ./example/src/app.js -o ./example/bundle.js -f cjs --compress true --sourcemap false",
+        "clean": "rimraf dist && mkdirp dist",
+        "microbundle": "microbundle --name ecs --sourcemap false --compress true",
+        "example": "microbundle -i ./example/src/app.js -o ./example/bundle.js -f cjs --compress false --sourcemap false",
         "build": "npm-run-all --silent clean microbundle",
         "lint": "eslint src",
-        "release": "npm install && npm-run-all --silent lint build && npm publish"
+        "release": "npm install && npm-run-all --silent lint build example && npm publish"
     },
     "devDependencies": {
         "eslint": "^5.3.0",

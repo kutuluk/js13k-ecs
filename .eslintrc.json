@@ -10,5 +10,8 @@
         "no-param-reassign": "off",
         "no-bitwise": "off",
         "no-unused-expressions": "off"
+    },
+    "globals": {
+        "Stats": true
     }
 }

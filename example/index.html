@@ -3,6 +3,7 @@
 
 <head>
     <title>js13k-ecs example</title>
+    <script type="text/javascript" src='stats.min.js'></script>
     <style type="text/css">
         html,
         body,
@@ -14,15 +15,23 @@
             overflow: hidden;
         }
 
-        canvas {
+        #view {
             width: 100vw;
             height: 100vh;
+        }
+
+        #sprites {
+            position: absolute;
+            top: 0px;
+            left: 90px;
+            color: #fff;
         }
     </style>
 </head>
 
 <body>
     <canvas id='view'></canvas>
+    <div id='sprites'></div>
     <script type="text/javascript" src='bundle.js'></script>
 </body>
 

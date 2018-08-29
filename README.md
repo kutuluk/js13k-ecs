@@ -1,6 +1,6 @@
 # js13k-ecs
 
-> A 1kb entity component system [(ECS)](http://entity-systems.wikidot.com/), designed for js13k.
+> A 1kb [entity component system](http://entity-systems.wikidot.com/), designed for js13k.
 
 [![NPM version](https://img.shields.io/npm/v/js13k-ecs.svg?style=flat-square)](https://www.npmjs.com/package/js13k-ecs)[![Build Status](https://img.shields.io/travis/kutuluk/js13k-ecs/master.svg?style=flat-square)](https://travis-ci.org/kutuluk/js13k-ecs)
 
@@ -27,14 +27,14 @@ var ecs = require('js13k-ecs');
 The [UMD](https://github.com/umdjs/umd) build is also available on [unpkg](https://unpkg.com):
 
 ```html
-<script src="https://unpkg.com/js13k-ecs/dist/index.umd.js"></script>
+<script src="https://unpkg.com/js13k-ecs/dist/ecs.umd.js"></script>
 ```
 
 You can find the library on `window.ecs`.
 
 ## Usage
 
-See example folder. [Live example (4.5k)](https://kutuluk.github.io/js13k-ecs/)
+See example folder. [Live example](https://kutuluk.github.io/js13k-ecs/)
 
 ## API
 
@@ -46,11 +46,11 @@ Registers components for use by the library. Components must be classes or const
 
 #### `process(...systems)`
 
-Adds systems for use by the library. Systems must be instances of classes or objects. Systems must implement the `update(delta)` method.
+Adds systems for use by the library. Systems must be instances of classes or objects. Systems must implement the `update` method.
 
 #### `create(id)`
 
-Creates an entity with the specified id. If id is not specified, serial numbers starting with 1 are generated and encoded in base36.
+Creates the entity with the specified `id`. If `id` is not specified, serial numbers starting with 1 are generated and encoded in base36. Returns the created entity.
 
 #### `get(id)`
 
