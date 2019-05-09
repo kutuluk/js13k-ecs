@@ -21,7 +21,8 @@ export class Movement {
 }
 
 const exhaustTransform = {
-  duration: 1 / 2,
+  // duration: 1 / 2,
+  duration: 1,
   end(entity) {
     entity.eject();
   },
@@ -31,10 +32,14 @@ const exhaustTransform = {
   },
 };
 
+const exhaustParticleProps = {
+  tint: 0xfbf98c,
+};
+
 export class Exhaust {
-  constructor(ecs, sprite, layer) {
+  constructor(ecs, frame, layer) {
     this.ecs = ecs;
-    this.sprite = sprite;
+    this.frame = frame;
     this.layer = layer;
     this.selector = ecs.select(Hunter, Position);
   }
@@ -46,8 +51,9 @@ export class Exhaust {
       const direction = vecFromAngle(position.rotation + Math.PI * signRandom());
       const offset = vecFromAngle(position.rotation).mul(8);
 
-      const sprite = new Sprite(this.sprite, this.layer);
-      sprite.tint = 0xfbf98c;
+      const sprite = new Sprite(this.frame, exhaustParticleProps);
+      this.layer.add(sprite);
+
       this.ecs
         .create()
         .add(
@@ -90,7 +96,7 @@ export class Transformer {
 }
 
 export class AI {
-  constructor(ecs, particleBitmap, particleLayer) {
+  constructor(ecs, particleFrame, particleLayer) {
     this.ecs = ecs;
     this.hunters = ecs.select(Hunter);
     this.bounties = ecs.select(Bounty);
@@ -100,20 +106,24 @@ export class AI {
       update(entity, stage) {
         const sprite = entity.get(Sprite);
         const scale = 1 + (1 - stage) * 0.2;
-        sprite && (sprite.scale = { x: scale, y: scale });
+        sprite && sprite.scale.set(scale);
       },
       next: {
         duration: 1 / 4,
         update(entity, stage) {
           const sprite = entity.get(Sprite);
           const scale = 1.2 - (1 - stage) * 0.2;
-          sprite && (sprite.scale = { x: scale, y: scale });
+          sprite && sprite.scale.set(scale);
         },
         end(entity) {
           const sprite = entity.get(Sprite);
-          sprite && (sprite.scale = { x: 1, y: 1 });
+          sprite && sprite.scale.set(1);
         },
       },
+    };
+
+    const deathParticleProps = {
+      tint: 0xf26419,
     };
 
     this.deathTransform = {
@@ -123,8 +133,8 @@ export class AI {
         if (position) {
           for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 10) {
             const velocity = vecFromAngle(angle).mul(100 * (1 + Math.random()));
-            const sprite = new Sprite(particleBitmap, particleLayer);
-            sprite.tint = 0xf26419;
+            const sprite = new Sprite(particleFrame, deathParticleProps);
+            particleLayer.add(sprite);
             ecs
               .create()
               .add(
@@ -139,7 +149,7 @@ export class AI {
       },
       update(entity, stage) {
         const sprite = entity.get(Sprite);
-        sprite && (sprite.scale = { x: stage, y: stage });
+        sprite && sprite.scale.set(stage);
       },
     };
   }
@@ -211,12 +221,12 @@ export class AI {
 }
 
 export class Spawner {
-  constructor(ecs, renderer, amount, bitmap) {
+  constructor(ecs, scene, amount, frame) {
     this.ecs = ecs;
     this.amount = amount;
-    this.bitmap = bitmap;
-    this.canvas = renderer.gl.canvas;
-    this.layer = renderer.layer(2);
+    this.frame = frame;
+    this.canvas = scene.gl.canvas;
+    this.layer = scene.layer(2);
     this.selector = ecs.select(Bounty);
 
     this.spawnTransform = {
@@ -224,7 +234,7 @@ export class Spawner {
       update(entity, stage) {
         const sprite = entity.get(Sprite);
         const scale = 1 - stage;
-        sprite && (sprite.scale = { x: scale, y: scale });
+        sprite && sprite.scale.set(scale);
       },
     };
   }
@@ -234,9 +244,9 @@ export class Spawner {
     const padding = (width + height) * 0.05;
 
     for (let i = this.selector.length; i < this.amount; i++) {
-      const sprite = new Sprite(this.bitmap);
+      const sprite = new Sprite(this.frame);
       sprite.rotation = Math.random();
-      sprite.scale = { x: 0, y: 0 };
+      sprite.scale.set();
       this.layer.add(sprite);
 
       this.ecs
@@ -257,8 +267,8 @@ export class Spawner {
 }
 
 export class Render {
-  constructor(ecs, renderer) {
-    this.renderer = renderer;
+  constructor(ecs, scene) {
+    this.scene = scene;
     this.selector = ecs.select(Position, Sprite);
   }
 
@@ -266,11 +276,12 @@ export class Render {
     this.selector.iterate((entity) => {
       const position = entity.get(Position);
       const sprite = entity.get(Sprite);
+      // sprite.position.copy(position);
       sprite.position.x = position.x;
       sprite.position.y = position.y;
       sprite.rotation = position.rotation;
     });
 
-    this.renderer.render();
+    this.scene.render();
   }
 }

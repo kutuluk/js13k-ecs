@@ -5,7 +5,7 @@ const entities = {};
 let ecsComponentSign = '_sign';
 let ecsComponentMask = '_mask';
 
-if (Symbol) {
+if (typeof Symbol !== 'undefined') {
   ecsComponentSign = Symbol(ecsComponentSign);
   ecsComponentMask = Symbol(ecsComponentMask);
 }
@@ -27,7 +27,7 @@ const matchEntity = (entity) => {
 
 const ejectEntity = (entity) => {
   Object.values(entity.components).forEach(
-    component => component.destructor && component.destructor(),
+    component => component && component.destructor && component.destructor(),
   );
 
   selectors.forEach(selector => selector.remove(entity));
@@ -38,11 +38,12 @@ const ejectEntity = (entity) => {
 };
 
 let sequence = 1;
+const signs = {};
 
 class Entity {
   constructor(id) {
     this.id = id || (sequence++).toString(36);
-    this.components = {};
+    this.components = Object.assign({}, signs);
     this.mask = 0;
   }
 
@@ -75,7 +76,8 @@ class Entity {
   }
 
   get(Component) {
-    return this.components[getComponentSign(Component)];
+    // return this.components[getComponentSign(Component)];
+    return this.components[Component[ecsComponentSign]];
   }
 
   /*
@@ -186,7 +188,10 @@ export default {
         return;
       }
 
-      Component[ecsComponentSign] = bit.toString(36);
+      const sign = bit.toString(36);
+      signs[sign] = null;
+
+      Component[ecsComponentSign] = sign;
       Component[ecsComponentMask] = 1 << bit;
       bit++;
     });

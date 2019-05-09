@@ -1,3 +1,6 @@
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Renderer from 'js13k-2d';
+
 import {
   Position, Velocity, Sprite, Bounty, Hunter, Transform,
 } from './components';
@@ -5,18 +8,19 @@ import {
 import {
   Movement, Render, AI, Spawner, Exhaust, Transformer,
 } from './systems';
-import ecs from '../../dist/ecs.m';
 
-import Renderer from './renderer.m';
+import ecs from '../../dist/ecs.mjs';
+
+const { Point, Texture, Frame } = Renderer;
 
 const stats = new Stats();
 document.body.appendChild(stats.dom);
 
 const view = document.getElementById('view');
-const renderer = Renderer(view);
-console.log(renderer);
+const scene = Renderer(view);
+const { gl } = scene;
 
-renderer.bkg(0.2, 0.2, 0.2, 1);
+scene.background(0.2, 0.2, 0.2);
 
 const atlasImg = () => {
   const canvas = document.createElement('canvas');
@@ -62,35 +66,48 @@ const atlasImg = () => {
 
   offset += size;
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(offset + 3, 3, offset + 28, 28);
+  for (let i = 0.2; i <= 1; i += 0.2) {
+    ctx.fillStyle = `rgba(255,255,255,${i})`;
+    ctx.beginPath();
+    ctx.arc(offset + 16, 16, 16 - i * 10, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   return canvas;
 };
 
-const atlas = renderer.texture(atlasImg());
+const atlas = Texture(scene, atlasImg(), 0, {
+  [gl.TEXTURE_MAG_FILTER]: gl.LINEAR,
+  [gl.TEXTURE_MIN_FILTER]: gl.LINEAR,
+});
+atlas.anchor.set(0.5);
 
-const bountyBitmap = renderer.bitmap(atlas, 0, 0, 31, 31);
-const hunterBitmap = renderer.bitmap(atlas, 32, 0, 63, 31);
-const particleBitmap = renderer.bitmap(atlas, 70, 10, 72, 12);
+const bountyBitmap = Frame(atlas, Point(), Point(32));
+const hunterBitmap = Frame(atlas, Point(32, 0), Point(32));
+const particleBitmap = Frame(atlas, Point(64, 0), Point(32));
+particleBitmap.width = 4;
+particleBitmap.height = 4;
 
-const huntersCount = (1 + ((view.width * view.height) / 100000) * 2) | 0;
+const huntersCount = (1 + ((view.width * view.height) / 100000) * 4) | 0;
 
-const particleLayer = renderer.layer(0);
+const particleLayer = scene.layer(0);
 
 ecs.register(Position, Velocity, Sprite, Bounty, Hunter, Transform);
 ecs.process(
   new Transformer(ecs),
-  new Spawner(ecs, renderer, huntersCount * 2, bountyBitmap),
+  new Spawner(ecs, scene, huntersCount * 2, bountyBitmap),
   new AI(ecs, particleBitmap, particleLayer),
   new Exhaust(ecs, particleBitmap, particleLayer),
   new Movement(ecs),
-  new Render(ecs, renderer),
+  new Render(ecs, scene),
 );
 
-const hunterLayer = renderer.layer(3);
+const hunterLayer = scene.layer(3);
 
 Array(...Array(huntersCount)).forEach(() => {
+  const sprite = new Sprite(hunterBitmap);
+  hunterLayer.add(sprite);
   ecs
     .create()
     .add(
@@ -101,7 +118,7 @@ Array(...Array(huntersCount)).forEach(() => {
       ),
       new Velocity(),
       new Hunter(),
-      new Sprite(hunterBitmap, hunterLayer),
+      sprite,
     );
 });
 
