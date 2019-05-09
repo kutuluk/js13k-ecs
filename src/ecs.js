@@ -5,7 +5,7 @@ const entities = {};
 let ecsComponentSign = '_sign';
 let ecsComponentMask = '_mask';
 
-if (Symbol) {
+if (typeof Symbol !== 'undefined') {
   ecsComponentSign = Symbol(ecsComponentSign);
   ecsComponentMask = Symbol(ecsComponentMask);
 }
