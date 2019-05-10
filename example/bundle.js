@@ -453,27 +453,27 @@ var i$1 = function (t, n) {
   return r;
 },
     s = i$1.bind(null, e$1),
-    c = i$1.bind(null, o$1),
-    a$1 = function (n) {
+    a$1 = i$1.bind(null, o$1),
+    c = function (n) {
   n.id && t$1.forEach(function (t) {
     return t.match(n);
   });
 },
     h$1 = 1,
-    u$1 = {},
-    f = function (t) {
-  this.id = t || (h$1++).toString(36), this.components = Object.assign({}, u$1), this.mask = 0;
+    f = {},
+    u$1 = function (t) {
+  this.id = t || (h$1++).toString(36), this.components = Object.assign({}, f), this.mask = 0;
 };
 
-f.prototype.add = function () {
+u$1.prototype.add = function () {
   var arguments$1 = arguments;
 
   for (var t = this, n = [], r = arguments.length; r--;) { n[r] = arguments$1[r]; }
 
   n.forEach(function (n) {
-    t.components[s(n.constructor)] = n, t.mask |= c(n.constructor);
-  }), a$1(this);
-}, f.prototype.remove = function () {
+    t.components[s(n.constructor)] = n, t.mask |= a$1(n.constructor);
+  }), c(this);
+}, u$1.prototype.remove = function () {
   var arguments$1 = arguments;
 
   for (var t = this, n = [], r = arguments.length; r--;) { n[r] = arguments$1[r]; }
@@ -481,50 +481,48 @@ f.prototype.add = function () {
   n.forEach(function (n) {
     var r = s(n),
         e = t.components[r];
-    e && (e.destructor && e.destructor(), delete t.components[r], t.mask &= ~c(n));
-  }), a$1(this);
-}, f.prototype.has = function (t) {
+    e && (e.destructor && e.destructor(), delete t.components[r], t.mask &= ~a$1(n));
+  }), c(this);
+}, u$1.prototype.has = function (t) {
   return s(t) in this.components;
-}, f.prototype.get = function (t) {
+}, u$1.prototype.get = function (t) {
   return this.components[t[e$1]];
-}, f.prototype.eject = function () {
-  var n;
-  n = this, Object.keys(n.components).map(function (t) {
-    return n.components[t];
-  }).forEach(function (t) {
-    return t && t.destructor && t.destructor();
-  }), t$1.forEach(function (t) {
-    return t.remove(n);
-  }), delete r$1[n.id], n.id = 0;
+}, u$1.prototype.eject = function () {
+  !function (n) {
+    for (var e in n) { if (Object.prototype.hasOwnProperty.call(n, e)) {
+      var o = n[e];
+      o && o.destructor && o.destructor();
+    } }
+
+    t$1.forEach(function (t) {
+      return t.remove(n);
+    }), delete r$1[n.id], n.id = 0;
+  }(this);
 };
 
 var p = function (t, n) {
   this.entity = t, this.prev = null, this.next = n;
 },
-    m = function (t) {
-  var n = this;
+    l = function (t) {
   if (!t) { throw new Error("Empty selector"); }
-  this.mask = t, this.map = {}, this.list = null, this.length = 0, Object.keys(r$1).map(function (t) {
-    return r$1[t];
-  }).forEach(function (t) {
-    return n.match(t);
-  });
+
+  for (var n in this.mask = t, this.map = {}, this.list = null, this.length = 0, r$1) { Object.prototype.hasOwnProperty.call(r$1, n) && this.match(r$1[n]); }
 };
 
-m.prototype.iterate = function (t) {
+l.prototype.iterate = function (t) {
   for (var n = this.list; n;) { t(n.entity), n = n.next; }
-}, m.prototype.match = function (t) {
+}, l.prototype.match = function (t) {
   (this.mask & t.mask) === this.mask ? this.add(t) : this.remove(t);
-}, m.prototype.add = function (t) {
+}, l.prototype.add = function (t) {
   if (!this.map[t.id]) {
     var n = new p(t, this.list);
     this.list && (this.list.prev = n), this.list = n, this.map[t.id] = n, this.length++;
   }
-}, m.prototype.remove = function (t) {
+}, l.prototype.remove = function (t) {
   var n = this.map[t.id];
   n && (n.prev ? n.prev.next = n.next : this.list = n.next, n.next && (n.next.prev = n.prev), delete this.map[t.id], this.length--);
 };
-var l = 0,
+var m = 0,
     d = performance || Date,
     v = d.now.bind(d);
 var ecs = {
@@ -534,11 +532,11 @@ var ecs = {
     for (var t = [], n = arguments.length; n--;) { t[n] = arguments$1[n]; }
 
     t.forEach(function (t) {
-      if (l > 31) { throw new Error("Components limit reached"); }
+      if (m > 31) { throw new Error("Components limit reached"); }
 
       if (!t[e$1]) {
-        var n = l.toString(36);
-        u$1[n] = null, t[e$1] = n, t[o$1] = 1 << l, l++;
+        var n = m.toString(36);
+        f[n] = null, t[e$1] = n, t[o$1] = 1 << m, m++;
       }
     });
   },
@@ -552,7 +550,7 @@ var ecs = {
     });
   },
   create: function (t) {
-    var n = new f(t);
+    var n = new u$1(t);
     if (r$1[n.id]) { throw new Error("The ID already exist"); }
     return r$1[n.id] = n, n;
   },
@@ -566,12 +564,12 @@ var ecs = {
 
     var e = 0;
     n.forEach(function (t) {
-      e |= c(t);
+      e |= a$1(t);
     });
 
     for (var o = 0; o < t$1.length; o++) { if (t$1[o].mask === e) { return t$1[o]; } }
 
-    var i = new m(e);
+    var i = new l(e);
     return t$1.push(i), i;
   },
   update: function (t) {

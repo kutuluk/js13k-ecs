@@ -26,10 +26,13 @@ const matchEntity = (entity) => {
 };
 
 const ejectEntity = (entity) => {
-  const values = Object.keys(entity.components).map(e => entity.components[e]);
-  values.forEach(
-    component => component && component.destructor && component.destructor(),
-  );
+  // eslint-disable-next-line no-restricted-syntax
+  for (const key in entity) {
+    if (Object.prototype.hasOwnProperty.call(entity, key)) {
+      const component = entity[key];
+      component && component.destructor && component.destructor();
+    }
+  }
 
   selectors.forEach(selector => selector.remove(entity));
   delete entities[entity.id];
@@ -120,8 +123,12 @@ class Selector {
     this.list = null;
     this.length = 0;
 
-    const values = Object.keys(entities).map(e => entities[e]);
-    values.forEach(entity => this.match(entity));
+    // eslint-disable-next-line no-restricted-syntax
+    for (const key in entities) {
+      if (Object.prototype.hasOwnProperty.call(entities, key)) {
+        this.match(entities[key]);
+      }
+    }
   }
 
   iterate(fn) {
