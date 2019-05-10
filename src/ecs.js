@@ -26,9 +26,13 @@ const matchEntity = (entity) => {
 };
 
 const ejectEntity = (entity) => {
-  Object.values(entity.components).forEach(
-    component => component && component.destructor && component.destructor(),
-  );
+  // eslint-disable-next-line no-restricted-syntax
+  for (const key in entity) {
+    if (Object.prototype.hasOwnProperty.call(entity, key)) {
+      const component = entity[key];
+      component && component.destructor && component.destructor();
+    }
+  }
 
   selectors.forEach(selector => selector.remove(entity));
   delete entities[entity.id];
@@ -119,7 +123,12 @@ class Selector {
     this.list = null;
     this.length = 0;
 
-    Object.values(entities).forEach(entity => this.match(entity));
+    // eslint-disable-next-line no-restricted-syntax
+    for (const key in entities) {
+      if (Object.prototype.hasOwnProperty.call(entities, key)) {
+        this.match(entities[key]);
+      }
+    }
   }
 
   iterate(fn) {
@@ -223,8 +232,11 @@ export default {
       mask |= getComponentMask(Component);
     });
 
-    const exist = selectors.find(selector => selector.mask === mask);
-    if (exist) return exist;
+    for (let i = 0; i < selectors.length; i++) {
+      if (selectors[i].mask === mask) {
+        return selectors[i];
+      }
+    }
 
     const selector = new Selector(mask);
     selectors.push(selector);
