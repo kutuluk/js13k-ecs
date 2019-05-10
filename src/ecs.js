@@ -26,7 +26,8 @@ const matchEntity = (entity) => {
 };
 
 const ejectEntity = (entity) => {
-  Object.values(entity.components).forEach(
+  const values = Object.keys(entity.components).map(e => entity.components[e]);
+  values.forEach(
     component => component && component.destructor && component.destructor(),
   );
 
@@ -119,7 +120,8 @@ class Selector {
     this.list = null;
     this.length = 0;
 
-    Object.values(entities).forEach(entity => this.match(entity));
+    const values = Object.keys(entities).map(e => entities[e]);
+    values.forEach(entity => this.match(entity));
   }
 
   iterate(fn) {
@@ -223,8 +225,11 @@ export default {
       mask |= getComponentMask(Component);
     });
 
-    const exist = selectors.find(selector => selector.mask === mask);
-    if (exist) return exist;
+    for (let i = 0; i < selectors.length; i++) {
+      if (selectors[i].mask === mask) {
+        return selectors[i];
+      }
+    }
 
     const selector = new Selector(mask);
     selectors.push(selector);

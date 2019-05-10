@@ -489,7 +489,9 @@ f.prototype.add = function () {
   return this.components[t[e$1]];
 }, f.prototype.eject = function () {
   var n;
-  n = this, Object.values(n.components).forEach(function (t) {
+  n = this, Object.keys(n.components).map(function (t) {
+    return n.components[t];
+  }).forEach(function (t) {
     return t && t.destructor && t.destructor();
   }), t$1.forEach(function (t) {
     return t.remove(n);
@@ -499,28 +501,30 @@ f.prototype.add = function () {
 var p = function (t, n) {
   this.entity = t, this.prev = null, this.next = n;
 },
-    l = function (t) {
+    m = function (t) {
   var n = this;
   if (!t) { throw new Error("Empty selector"); }
-  this.mask = t, this.map = {}, this.list = null, this.length = 0, Object.values(r$1).forEach(function (t) {
+  this.mask = t, this.map = {}, this.list = null, this.length = 0, Object.keys(r$1).map(function (t) {
+    return r$1[t];
+  }).forEach(function (t) {
     return n.match(t);
   });
 };
 
-l.prototype.iterate = function (t) {
+m.prototype.iterate = function (t) {
   for (var n = this.list; n;) { t(n.entity), n = n.next; }
-}, l.prototype.match = function (t) {
+}, m.prototype.match = function (t) {
   (this.mask & t.mask) === this.mask ? this.add(t) : this.remove(t);
-}, l.prototype.add = function (t) {
+}, m.prototype.add = function (t) {
   if (!this.map[t.id]) {
     var n = new p(t, this.list);
     this.list && (this.list.prev = n), this.list = n, this.map[t.id] = n, this.length++;
   }
-}, l.prototype.remove = function (t) {
+}, m.prototype.remove = function (t) {
   var n = this.map[t.id];
   n && (n.prev ? n.prev.next = n.next : this.list = n.next, n.next && (n.next.prev = n.prev), delete this.map[t.id], this.length--);
 };
-var m = 0,
+var l = 0,
     d = performance || Date,
     v = d.now.bind(d);
 var ecs = {
@@ -530,11 +534,11 @@ var ecs = {
     for (var t = [], n = arguments.length; n--;) { t[n] = arguments$1[n]; }
 
     t.forEach(function (t) {
-      if (m > 31) { throw new Error("Components limit reached"); }
+      if (l > 31) { throw new Error("Components limit reached"); }
 
       if (!t[e$1]) {
-        var n = m.toString(36);
-        u$1[n] = null, t[e$1] = n, t[o$1] = 1 << m, m++;
+        var n = l.toString(36);
+        u$1[n] = null, t[e$1] = n, t[o$1] = 1 << l, l++;
       }
     });
   },
@@ -564,11 +568,10 @@ var ecs = {
     n.forEach(function (t) {
       e |= c(t);
     });
-    var o = t$1.find(function (t) {
-      return t.mask === e;
-    });
-    if (o) { return o; }
-    var i = new l(e);
+
+    for (var o = 0; o < t$1.length; o++) { if (t$1[o].mask === e) { return t$1[o]; } }
+
+    var i = new m(e);
     return t$1.push(i), i;
   },
   update: function (t) {
