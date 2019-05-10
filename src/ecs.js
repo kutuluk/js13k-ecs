@@ -26,10 +26,11 @@ const matchEntity = (entity) => {
 };
 
 const ejectEntity = (entity) => {
+  const { components } = entity;
   // eslint-disable-next-line no-restricted-syntax
-  for (const key in entity) {
-    if (Object.prototype.hasOwnProperty.call(entity, key)) {
-      const component = entity[key];
+  for (const key in components) {
+    if (Object.prototype.hasOwnProperty.call(components, key)) {
+      const component = components[key];
       component && component.destructor && component.destructor();
     }
   }

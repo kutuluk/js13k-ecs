@@ -489,9 +489,11 @@ u$1.prototype.add = function () {
   return this.components[t[e$1]];
 }, u$1.prototype.eject = function () {
   !function (n) {
-    for (var e in n) { if (Object.prototype.hasOwnProperty.call(n, e)) {
-      var o = n[e];
-      o && o.destructor && o.destructor();
+    var e = n.components;
+
+    for (var o in e) { if (Object.prototype.hasOwnProperty.call(e, o)) {
+      var i = e[o];
+      i && i.destructor && i.destructor();
     } }
 
     t$1.forEach(function (t) {
@@ -523,8 +525,8 @@ l.prototype.iterate = function (t) {
   n && (n.prev ? n.prev.next = n.next : this.list = n.next, n.next && (n.next.prev = n.prev), delete this.map[t.id], this.length--);
 };
 var m = 0,
-    d = performance || Date,
-    v = d.now.bind(d);
+    v = performance || Date,
+    d = v.now.bind(v);
 var ecs = {
   register: function () {
     var arguments$1 = arguments;
@@ -575,8 +577,8 @@ var ecs = {
   update: function (t) {
     var r = {};
     return n$1.forEach(function (n) {
-      var e = v();
-      n.update(t), r[n.constructor.name] = v() - e;
+      var e = d();
+      n.update(t), r[n.constructor.name] = d() - e;
     }), r;
   }
 };
