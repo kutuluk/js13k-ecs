@@ -42,7 +42,7 @@ See example folder. [Live example](https://kutuluk.github.io/js13k-ecs/)
 
 #### `register(...Components)`
 
-Registers components for use by the library. Components must be classes or constructor functions. No other requirements are imposed on the components.
+Registers components for use by the library. Components must be classes or constructor functions. No other requirements are imposed on the components. Note that there is currently a limit of 32 registered components.
 
 #### `process(...systems)`
 
