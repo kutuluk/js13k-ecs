@@ -1,27 +1,19 @@
 # js13k-ecs
 
-> A 1kb [entity component system](http://entity-systems.wikidot.com/), designed for js13k.
+[![NPM version](https://img.shields.io/npm/v/js13k-ecs.svg?style=flat-square)](https://www.npmjs.com/package/js13k-ecs)
 
-[![NPM version](https://img.shields.io/npm/v/js13k-ecs.svg?style=flat-square)](https://www.npmjs.com/package/js13k-ecs)[![Build Status](https://img.shields.io/travis/kutuluk/js13k-ecs/master.svg?style=flat-square)](https://travis-ci.org/kutuluk/js13k-ecs)
+> A microscopic object-oriented [Entity Component System](https://en.wikipedia.org/wiki/Entity_component_system) created specifically for the [Js13kGames](https://js13kgames.com/) competition.
 
--   **Tiny:** weighs about one kilobyte gzipped
+Designed not for high performance (but still fast enough), primarily aims to accomplish the following goals:
+
+- Lightweight (~650b minzipped)
+- Simple, concise and flexible API in traditional javascript style
+- Effective minification of the final user code
 
 ## Install
 
-This project uses [node](http://nodejs.org) and [npm](https://npmjs.com). Go check them out if you don't have them locally installed.
-
 ```sh
-$ npm install js13k-ecs
-```
-
-Then with a module bundler like [rollup](http://rollupjs.org/) or [webpack](https://webpack.js.org/), use as you would anything else:
-
-```javascript
-// using ES6 modules
-import ecs from 'js13k-ecs';
-
-// using CommonJS modules
-var ecs = require('js13k-ecs');
+$ npm i js13k-ecs
 ```
 
 The [UMD](https://github.com/umdjs/umd) build is also available on [unpkg](https://unpkg.com):
@@ -34,56 +26,170 @@ You can find the library on `window.ecs`.
 
 ## Usage
 
-See example folder. [Live example](https://kutuluk.github.io/js13k-ecs/)
+```javascript
+import ecs from 'js13k-ecs';
+
+class Vector {
+    constructor(x = 0, y = x) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+class Position extends Vector {}
+class Velocity extends Vector {}
+
+ecs.register(Position, Velocity);
+
+ecs.create().add(new Position(), new Velocity(1, 1));
+
+class MovementSystem {
+    constructor(ecs) {
+        this.query = ecs.query(Position, Velocity);
+    }
+
+    update(delta) {
+        this.query.iterate((entity, [position, velocity]) => {
+            position.x += velocity.x * delta;
+            position.y += velocity.y * delta;
+        });
+    }
+}
+
+const pipeline = [new MovementSystem(ecs)];
+
+let last = performance.now();
+
+const loop = () => {
+    const now = performance.now();
+    const delta = now - last;
+    last = now;
+
+    ecs.update(pipeline, delta);
+    requestAnimationFrame(loop);
+};
+
+requestAnimationFrame(loop);
+```
+
+See full demo in example folder. [Live demo](https://kutuluk.github.io/js13k-ecs/)
 
 ## API
 
 ### ecs
 
-#### `register(...Components)`
+#### `ecs.register(Class1, ..., ClassN)`
 
-Registers components for use by the library. Components must be classes or constructor functions. No other requirements are imposed on the components. Note that there is currently a limit of 32 registered components.
+The method registers javascript classes to be used as components. There are no requirements for classes, they can contain any data and have any methods. If the class contains a `destructor` method, it will be called when the component is removed from the entity.
 
-#### `process(...systems)`
+#### `ecs.create()`
 
-Adds systems for use by the library. Systems must be instances of classes or objects. Systems must implement the `update` method.
+The method creates and returns an empty entity.
 
-#### `create(id)`
+#### `ecs.query(Class1, ..., ClassN)`
 
-Creates the entity with the specified `id`. If `id` is not specified, serial numbers starting with 1 are generated and encoded in base36. Returns the created entity.
+The method returns a set of entities containing components of all specified classes. The set is updated automatically and is always up-to-date.
 
-#### `get(id)`
+The set has a `length` property, which stores the number of entities in the set and a `iterate(iteratorFunction [, skipComponentsFlag])` method, which allows to enumerate all entities in the set.
 
-Returns the entity with the specified id or `undefined` if it is not present.
+```javascript
+class MovementSystem {
+    constructor(ecs) {
+        this.query = ecs.query(Position, Velocity);
+    }
 
-#### `select(...Components)`
+    update(delta) {
+        const movement = (entity, [position, velocity]) => {
+            position.x += velocity.x * delta;
+            position.y += velocity.y * delta;
+            position.rotation += velocity.rotation * delta;
+        };
 
-Returns a selection of entities that have the specified set of components. The sample is updated real-time and always relevant.
+        this.query.iterate(movement);
+    }
+}
+```
 
-The selector has the `length` property, which stores the number of entities in the sample and the `iterate(fn)` method, with which you can loop through all entities.
+In this example, the entities in the set are iterated using the `movement` function, which is applied to each entity that has both a `Position` and a `Velocity` component. The first parameter to this function is the entity itself, the second parameter is an array of components in the same order in which they were specified when the set was created. If the set consists of a single component, the second parameter is not the array, but the specified component.
 
-#### `update(delta)`
+Automatic component extraction is useful for more compact code, but there are cases when it is not required. If you pass `true` as the second parameter to the `iterate` method, the components will not be automatically retrieved from the entity, then the required components can be retrieved manually using the `entity.get()` method.
 
-Successively calls `update` methods on all systems, passing them the `delta` parameter. Returns the object that contains the duration of the execution of the systems.
+Queries are the primary way systems are implemented. Typically, a query is created when the system is created and used in the `update` method.
+
+#### `ecs.update(pipeline, arg1, ..., argN)`
+
+The method sequentially runs the `update` method of each system from the `pipeline` array of systems, passing the given parameters to it. This is the optimal way to update the world for the production build. At the same time, you can update the world without using this method by manually calling the necessary systems. Here is an example of code that starts the systems and collects information about the execution time of each of them:
+
+```javascript
+const pipeline = [new TargetingSystem(ecs), new MovementSystem(ecs)];
+
+let last = performance.now();
+
+const loop = () => {
+    const now = performance.now();
+    const delta = now - last;
+    last = now;
+
+    const statistics = {};
+
+    pipeline.forEach((system) => {
+        const begin = performance.now();
+        system.update(delta);
+        statistics[system.constructor.name] = performance.now() - begin;
+    });
+
+    console.log(statistics);
+
+    requestAnimationFrame(loop);
+};
+
+requestAnimationFrame(loop);
+```
+
+The system can be any class or object with the `update` method, whose arguments are not strictly defined and are set by the developer when calling `ecs.update`. This allows you to flexibly customize the library's behavior depending on the needs of the application. As a rule, this method takes at least one `delta` argument, which determines how much time has passed since the last update of the world.
+
+#### `ecs.reset()`
+
+Removes all entities and their components from the world.
 
 ### `Entity`
 
-#### `add(...components)`
+Entities in this ecs implementation have no id, are passed by reference if necessary, and carry all the necessary methods for adding, extracting and removing components. As well as a method to remove the entity from the world (with all components removed).
 
-Adds the components to the entity.
+#### `entity.add(component1, ..., componentN)`
 
-#### `remove(...Components)`
+The method adds components to an entity. The method waits for instances of previously registered classes. In case the passed component is already present in the entity, the old component will be removed (with a call to the destructor if present) and replaced with the new one. Returns the entity itself.
 
-Removes components of the `Components` class from the entity. Calls the `destructor` method of each component if it is present.
+#### `entity.get(Class1, ..., ClassN)`
 
-#### `has(Component)`
+The method returns the specified entity components. The method expects previously registered classes. If more than one component is requested, the method returns an array of components in the same order, otherwise the requested component itself. If the entity does not have the requested component, `undefined` is returned instead.
 
-Returns true if the entity has a component of the `Component` class and false otherwise.
+#### `entity.remove(Class1, ..., ClassN)`
 
-#### `get(Component)`
+The method removes components from the entity. The method waits for previously registered classes. If the component has a constructor, calls it before deleting it. Returns the entity itself.
 
-Returns a component of the `Component` class or `undefined` if it is not present.
+#### `entity.delete()`
 
-#### `eject()`
+The method removes the entity from the world by first clearing it of components with a call to their destructors.
 
-Removes the entity from all selectors and sets its `id` to zero. Calls the `destructor` method of each component if it is present.
+#### `entity.exists`
+
+This property is used to determine whether an entity is in the world or has already been removed from it. If the entity is deleted, it returns `null`, otherwise it returns the entity itself. When saving entity references, this property should always be checked before operations on the entity. Note that such a check is not necessary for entities obtained from queries - entities are guaranteed to be up to date there.
+
+```javascript
+class TargetingSystem {
+    constructor(ecs) {
+        this.query = ecs.query(Unit);
+    }
+
+    update(delta) {
+        this.query.iterate((entity, unit) => {
+            if (!unit.target?.exists) {
+                // unit.target is not set, or the entity to which the target is pointing has become obsolete
+                // retarget
+                // ...
+            }
+        });
+    }
+}
+```

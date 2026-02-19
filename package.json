@@ -1,6 +1,6 @@
 {
     "name": "js13k-ecs",
-    "description": "Tiny 1kb entity component system, designed for js13k",
+    "description": "Tiny < 1kb entity component system, designed for js13k",
     "keywords": [
         "entity component system",
         "ecs",
@@ -9,11 +9,15 @@
     "repository": "github:kutuluk/js13k-ecs",
     "author": "Evgeniy Pavlov <mail@kutuluk.com>",
     "license": "MIT",
-    "version": "0.1.4",
+    "version": "1.0",
     "source": "src/ecs.js",
-    "main": "dist/ecs.js",
-    "umd:main": "dist/ecs.umd.js",
-    "module": "dist/ecs.mjs",
+    "main": "./dist/ecs.cjs",
+    "umd:main": "./dist/ecs.umd.js",
+    "module": "./dist/ecs.mjs",
+    "exports": "./dist/ecs.modern.mjs",
+    "mangle": {
+        "regex": "^_"
+    },
     "files": [
         "src",
         "dist"
@@ -21,21 +25,21 @@
     "scripts": {
         "clean": "rimraf dist && mkdirp dist",
         "microbundle": "microbundle --name ecs --compress true --sourcemap false",
-        "example": "microbundle -i ./example/src/app.js -o ./example/bundle.js -f cjs --compress false --sourcemap false --no-compress",
+        "example": "microbundle -i ./example/src/app.js -o ./example/bundle.js -f es --compress false --sourcemap false --no-compress",
         "build": "npm-run-all --silent clean microbundle",
+        "format": "npx prettier . --write",
+        "dev": "npm-run-all --silent clean microbundle example",
         "lint": "eslint src",
-        "check": "npm-check",
+        "check": "npm-check -u",
         "release": "npm install && npm-run-all --silent lint build example && npm publish"
     },
     "devDependencies": {
-        "eslint": "^5.16.0",
-        "eslint-config-airbnb-base": "^13.1.0",
-        "eslint-plugin-import": "^2.17.2",
         "js13k-2d": "^0.6.0",
-        "microbundle": "^0.11.0",
-        "mkdirp": "^0.5.1",
-        "npm-check": "^5.9.0",
+        "microbundle": "^0.15.1",
+        "mkdirp": "^3.0.1",
+        "npm-check": "^6.0.1",
         "npm-run-all": "^4.1.5",
-        "rimraf": "^2.6.3"
+        "prettier": "^3.5.3",
+        "rimraf": "^6.0.1"
     }
 }
