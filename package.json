@@ -11,7 +11,7 @@
     "repository": "github:kutuluk/js13k-ecs",
     "author": "Evgeniy Pavlov <mail@kutuluk.com>",
     "license": "MIT",
-    "version": "1.0",
+    "version": "1.0.0",
     "source": "src/ecs.js",
     "main": "./dist/ecs.cjs",
     "module": "./dist/ecs.js",

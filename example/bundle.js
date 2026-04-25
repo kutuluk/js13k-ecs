@@ -172,13 +172,13 @@ var Position = /*#__PURE__*/function (_VectorWithRotation) {
   _inheritsLoose(Position, _VectorWithRotation);
   return Position;
 }(VectorWithRotation);
-var Velocity = /*#__PURE__*/function (_Position) {
+var Velocity = /*#__PURE__*/function (_VectorWithRotation2) {
   function Velocity() {
-    return _Position.apply(this, arguments) || this;
+    return _VectorWithRotation2.apply(this, arguments) || this;
   }
-  _inheritsLoose(Velocity, _Position);
+  _inheritsLoose(Velocity, _VectorWithRotation2);
   return Velocity;
-}(Position);
+}(VectorWithRotation);
 var Sprite = /*#__PURE__*/function (_Renderer$Sprite) {
   function Sprite() {
     return _Renderer$Sprite.apply(this, arguments) || this;
