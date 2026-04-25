@@ -1,258 +1,155 @@
-const selectors = [];
-const systems = [];
-const entities = {};
-
-let ecsComponentSign = '_sign';
-let ecsComponentMask = '_mask';
-
-if (typeof Symbol !== 'undefined') {
-  ecsComponentSign = Symbol(ecsComponentSign);
-  ecsComponentMask = Symbol(ecsComponentMask);
-}
-
-const getComponentProperty = (ecsComponentProperty, Component) => {
-  const property = Component[ecsComponentProperty];
-  if (!property) {
-    throw new Error('The component is not registered');
-  }
-  return property;
-};
-
-const getComponentSign = getComponentProperty.bind(null, ecsComponentSign);
-const getComponentMask = getComponentProperty.bind(null, ecsComponentMask);
-
-const matchEntity = (entity) => {
-  entity.id && selectors.forEach(selector => selector.match(entity));
-};
-
-const ejectEntity = (entity) => {
-  const { components } = entity;
-  // eslint-disable-next-line no-restricted-syntax
-  for (const key in components) {
-    if (Object.prototype.hasOwnProperty.call(components, key)) {
-      const component = components[key];
-      component && component.destructor && component.destructor();
-    }
-  }
-
-  selectors.forEach(selector => selector.remove(entity));
-  delete entities[entity.id];
-  entity.id = 0;
-  // entity.mask = 0;
-  // entity.components = {};
-};
-
-let sequence = 1;
-const signs = {};
-
-class Entity {
-  constructor(id) {
-    this.id = id || (sequence++).toString(36);
-    this.components = Object.assign({}, signs);
-    this.mask = 0;
-  }
-
-  add(...components) {
-    components.forEach((component) => {
-      this.components[getComponentSign(component.constructor)] = component;
-      this.mask |= getComponentMask(component.constructor);
-    });
-
-    matchEntity(this);
-  }
-
-  remove(...Components) {
-    Components.forEach((Component) => {
-      const sign = getComponentSign(Component);
-      const component = this.components[sign];
-
-      if (component) {
-        component.destructor && component.destructor();
-        delete this.components[sign];
-        this.mask &= ~getComponentMask(Component);
-      }
-    });
-
-    matchEntity(this);
-  }
-
-  has(Component) {
-    return getComponentSign(Component) in this.components;
-  }
-
-  get(Component) {
-    // return this.components[getComponentSign(Component)];
-    return this.components[Component[ecsComponentSign]];
-  }
-
-  /*
-  set(Component, ...args) {
-    const component = this.components[getComponentSign(Component)];
-
-    if (component) {
-      if (!component.setter) {
-        throw new Error('Component does not have setter');
-      }
-      component.setter(...args);
-    } else {
-      this.add(new Component(...args));
-    }
-  }
-  */
-
-  eject() {
-    ejectEntity(this);
-  }
-}
-
-class Node {
-  constructor(entity, next) {
-    this.entity = entity;
-    this.prev = null;
-    this.next = next;
-  }
-}
-
-class Selector {
-  constructor(mask) {
-    if (!mask) {
-      throw new Error('Empty selector');
-    }
-
-    this.mask = mask;
-    this.map = {};
-    this.list = null;
-    this.length = 0;
-
-    // eslint-disable-next-line no-restricted-syntax
-    for (const key in entities) {
-      if (Object.prototype.hasOwnProperty.call(entities, key)) {
-        this.match(entities[key]);
-      }
-    }
-  }
-
-  iterate(fn) {
-    let node = this.list;
-    while (node) {
-      fn(node.entity);
-      node = node.next;
-    }
-  }
-
-  match(entity) {
-    if ((this.mask & entity.mask) === this.mask) {
-      this.add(entity);
-    } else {
-      this.remove(entity);
-    }
-  }
-
-  add(entity) {
-    if (this.map[entity.id]) {
-      // this.map[entity.id].entity = entity;
-      return;
-    }
-
-    const node = new Node(entity, this.list);
-
-    this.list && (this.list.prev = node);
-    this.list = node;
-
-    this.map[entity.id] = node;
-    this.length++;
-  }
-
-  remove(entity) {
-    const node = this.map[entity.id];
-
-    if (node) {
-      if (node.prev) {
-        node.prev.next = node.next;
-      } else {
-        this.list = node.next;
-      }
-
-      node.next && (node.next.prev = node.prev);
-
-      delete this.map[entity.id];
-      this.length--;
-    }
-  }
-}
-
+const empty = new Map();
+const components = new Set();
+const ecsComponentMask = Symbol('m');
 let bit = 0;
 
-const perf = performance || Date;
-const now = perf.now.bind(perf);
-
-export default {
-  register(...Components) {
-    Components.forEach((Component) => {
-      if (bit > 31) {
-        throw new Error('Components limit reached');
-      }
-
-      if (Component[ecsComponentSign]) {
-        // throw new Error('The component is already registered');
-        return;
-      }
-
-      const sign = bit.toString(36);
-      signs[sign] = null;
-
-      Component[ecsComponentSign] = sign;
-      Component[ecsComponentMask] = 1 << bit;
-      bit++;
-    });
-  },
-
-  process(...s) {
-    s.forEach(system => systems.push(system));
-  },
-
-  create(id) {
-    const entity = new Entity(id);
-
-    if (entities[entity.id]) {
-      throw new Error('The ID already exist');
+class Entity {
+    constructor(world) {
+        this._world = world;
+        this._components = new Map();
+        this._mask = BigInt(0);
     }
 
-    entities[entity.id] = entity;
-    return entity;
-  },
-
-  get(id) {
-    return entities[id];
-  },
-
-  select(...Components) {
-    let mask = 0;
-
-    Components.forEach((Component) => {
-      mask |= getComponentMask(Component);
-    });
-
-    for (let i = 0; i < selectors.length; i++) {
-      if (selectors[i].mask === mask) {
-        return selectors[i];
-      }
+    get exists() {
+        return this._components === empty ? null : this;
     }
 
-    const selector = new Selector(mask);
-    selectors.push(selector);
-    return selector;
-  },
+    add(...components) {
+        if (this.exists) {
+            components.forEach((component) => {
+                const mask = component?.constructor?.[ecsComponentMask];
+                if (mask) {
+                    this._components.get(mask)?.destructor?.(this);
+                    this._components.set(mask, component);
+                    this._mask |= mask;
+                }
+            });
 
-  update(delta) {
-    const statistics = {};
+            this._world._matchEntity(this);
+        }
 
-    systems.forEach((system) => {
-      const begin = now();
-      system.update(delta);
-      statistics[system.constructor.name] = now() - begin;
+        return this;
+    }
+
+    remove(...Components) {
+        if (this.exists) {
+            Components.forEach((Component) => {
+                const mask = Component[ecsComponentMask];
+                const component = this._components.get(mask);
+
+                if (component) {
+                    component.destructor?.(this);
+                    this._components.delete(mask);
+                    this._mask &= ~mask;
+                }
+            });
+
+            this._world._matchEntity(this);
+        }
+
+        return this;
+    }
+
+    get(...Components) {
+        const result = Components.map(
+            (Component) => this._components.get(Component[ecsComponentMask]) || null,
+        );
+        return result.length > 1 ? result : result[0];
+    }
+
+    delete() {
+        this._components.forEach((component) => component.destructor?.(this));
+        this._world._queries.forEach((query) => query._remove(this));
+        this._world._entities.delete(this);
+        this._components = empty;
+    }
+}
+
+class Query {
+    constructor(world, mask, Components, parent) {
+        const set = parent?._set || new Set();
+        this._set = set;
+        this._mask = mask;
+        this._components = Components;
+
+        this._match = (entity) => {
+            (mask && (mask & entity._mask) === mask && set.add(entity)) || set.delete(entity);
+        };
+
+        !parent && world._entities.forEach(this._match);
+    }
+
+    _check(Components) {
+        this._components.every((c, i) => c === Components[i]);
+    }
+
+    _remove(entity) {
+        this._set.delete(entity);
+    }
+
+    iterate(fn) {
+        this._set.forEach((entity) => fn(entity.get(...this._components), entity));
+    }
+
+    get length() {
+        return this._set.size;
+    }
+}
+
+class World {
+    constructor() {
+        this._queries = [];
+        this._entities = new Set();
+    }
+
+    _matchEntity(entity) {
+        this._queries.forEach((query) => query._match(entity));
+    }
+
+    create() {
+        const entity = new Entity(this);
+        this._entities.add(entity);
+        return entity;
+    }
+
+    query(...Components) {
+        const mask = Components.reduce(
+            (mask, Component) => (mask |= Component[ecsComponentMask]),
+            BigInt(0),
+        );
+
+        let query = this._queries.find((q) => q._mask === mask);
+
+        if (!query) {
+            query = new Query(this, mask, Components);
+            this._queries.push(query);
+        }
+
+        if (!query._check(Components)) {
+            return new Query(this, mask, Components, query);
+        }
+
+        return query;
+    }
+
+    update(pipeline, ...args) {
+        pipeline.forEach((system) => system.update(...args));
+    }
+
+    reset() {
+        this._entities.forEach((entity) => entity.delete());
+    }
+}
+
+const registerComponents = (...Components) => {
+    Components.forEach((Component) => {
+        if (!components.has(Component)) {
+            Component[ecsComponentMask] = BigInt('0b1'.padEnd(3 + bit++, '0'));
+            components.add(Component);
+        }
     });
-
-    return statistics;
-  },
 };
+
+const createWorld = () => new World();
+
+export default [registerComponents, createWorld];

@@ -1,0 +1,5 @@
+dist
+node_modules
+package-lock.json
+example/bundle.modern.mjs
+example/stats.min.js

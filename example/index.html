@@ -1,38 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+    <head>
+        <title>js13k-ecs example</title>
+        <script type="text/javascript" src="stats.min.js"></script>
+        <style type="text/css">
+            html,
+            body,
+            canvas {
+                margin: 0;
+                border: 0;
+                padding: 0;
+                display: block;
+                overflow: hidden;
+            }
 
-<head>
-    <title>js13k-ecs example</title>
-    <script type="text/javascript" src='stats.min.js'></script>
-    <style type="text/css">
-        html,
-        body,
-        canvas {
-            margin: 0;
-            border: 0;
-            padding: 0;
-            display: block;
-            overflow: hidden;
-        }
+            #view {
+                width: 100vw;
+                height: 100vh;
+            }
 
-        #view {
-            width: 100vw;
-            height: 100vh;
-        }
+            .info {
+                position: absolute;
+                top: 10px;
+                left: 20px;
+                color: #fff;
+            }
+        </style>
+    </head>
 
-        #sprites {
-            position: absolute;
-            top: 0px;
-            left: 90px;
-            color: #fff;
-        }
-    </style>
-</head>
-
-<body>
-    <canvas id='view'></canvas>
-    <div id='sprites'></div>
-    <script type="text/javascript" src='bundle.js'></script>
-</body>
-
+    <body>
+        <canvas id="view"></canvas>
+        <div class="info"><pre id="info"></pre></div>
+        <script type="text/javascript" src="bundle.js"></script>
+    </body>
 </html>
