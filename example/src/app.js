@@ -11,7 +11,7 @@ import {
     Transform,
     Exhaust,
     Attractor,
-    Collider,
+    Greed,
 } from './components';
 
 import {
@@ -19,7 +19,7 @@ import {
     Render,
     IntersectionProcessor,
     TargetingSystem,
-    HuterControlSystem,
+    HunterControlSystem,
     Spawner,
     ExhaustProcessor,
     TransformSystem,
@@ -28,6 +28,8 @@ import {
 } from './systems';
 
 import ecs from '../../src/ecs';
+
+const [registerComponents, createWorld] = ecs;
 
 const { Point, Texture, Frame } = Renderer;
 
@@ -111,74 +113,73 @@ explosionBitmap.width = 12;
 explosionBitmap.height = 12;
 
 const huntersCount = 1 + Math.round((view.width * view.height) / 150 ** 2);
-// const huntersCount = 1;
 
 const particleLayer = scene.layer(0);
 const hunterLayer = scene.layer(3);
 
 class SpaceManager {
     constructor(cellSize, mapSize) {
-        const size = Math.ceil(mapSize / cellSize);
-        const space = Array.from({ length: size * size }).map(() => new Set());
+        this.cellSize = cellSize;
+        this.size = Math.ceil(mapSize / cellSize);
+        this.space = Array.from({ length: this.size ** 2 }).map(() => new Set());
+    }
 
-        const getCellCoords = (x, y) => {
-            const cx = clamp(0, size - 1, ~~(x / cellSize));
-            const cy = clamp(0, size - 1, ~~(y / cellSize));
-            return [cx, cy];
-        };
+    getCellCoords(x, y) {
+        const cx = clamp(0, this.size - 1, ~~(x / this.cellSize));
+        const cy = clamp(0, this.size - 1, ~~(y / this.cellSize));
+        return [cx, cy];
+    }
 
-        const getCell = (x, y) => {
-            const [cx, cy] = getCellCoords(x, y);
-            return space[cx + cy * size];
-        };
+    getCell(x, y) {
+        const [cx, cy] = this.getCellCoords(x, y);
+        return this.space[cx + cy * this.size];
+    }
 
-        this.get = (point, radius, iterator) => {
-            const { x, y } = point;
-            const [left, top] = getCellCoords(x - radius, y - radius);
-            const [right, bottom] = getCellCoords(x + radius, y + radius);
+    get(point, radius, iterator) {
+        const { x, y } = point;
+        const [left, top] = this.getCellCoords(x - radius, y - radius);
+        const [right, bottom] = this.getCellCoords(x + radius, y + radius);
 
-            for (let cx = left; cx <= right; cx++) {
-                for (let cy = top; cy <= bottom; cy++) {
-                    const cell = space[cx + cy * size];
+        for (let cx = left; cx <= right; cx++) {
+            for (let cy = top; cy <= bottom; cy++) {
+                const cell = this.space[cx + cy * this.size];
 
-                    cell.forEach((entity) => {
-                        const position = entity.get(Position);
-                        position &&
-                            position.distanceSq(point) < radius * radius &&
-                            iterator(entity);
-                    });
-                }
+                cell.forEach((entity) => {
+                    const position = entity.exists?.get(Position);
+                    position && position.distanceSq(point) < radius * radius && iterator(entity);
+                });
             }
-        };
-
-        this.update = (entity, [{ x, y }, collider]) => {
-            const cell = getCell(x, y);
-
-            cell.add(entity);
-
-            const colliderCell = collider.cell;
-            collider.cell = cell;
-
-            colliderCell && colliderCell !== cell && colliderCell.delete(entity);
-        };
+        }
     }
 }
 
 const spaceManager = new SpaceManager(100, 10000);
 
-ecs.register(Position, Velocity, Sprite, Bounty, Hunter, Transform, Exhaust, Attractor, Collider);
+registerComponents(
+    Position,
+    Velocity,
+    Sprite,
+    Bounty,
+    Hunter,
+    Transform,
+    Exhaust,
+    Attractor,
+    Greed,
+);
+
+const world = createWorld();
 
 const pipeline = [
-    new TransformSystem(ecs),
-    new IntersectionProcessor(ecs, explosionBitmap, particleLayer),
-    new TargetingSystem(ecs, spaceManager),
-    new HuterControlSystem(ecs),
-    new ExhaustProcessor(ecs, particleBitmap, particleLayer),
-    new AttractorProcessor(ecs),
-    new MovementSystem(ecs),
-    new Spawner(ecs, scene, ~~(huntersCount * 1.5), bountyBitmap),
-    new SpaceUpdater(ecs, spaceManager),
-    new Render(ecs, scene),
+    new TransformSystem(world),
+    new IntersectionProcessor(world, explosionBitmap, particleLayer),
+    new TargetingSystem(world, spaceManager),
+    new HunterControlSystem(world),
+    new ExhaustProcessor(world, particleBitmap, particleLayer),
+    new AttractorProcessor(world),
+    new MovementSystem(world),
+    new Spawner(world, scene, ~~(huntersCount * 1.5), bountyBitmap),
+    new SpaceUpdater(world, spaceManager),
+    new Render(world),
 ];
 
 for (let i = huntersCount; i > 0; i--) {
@@ -188,19 +189,21 @@ for (let i = huntersCount; i > 0; i--) {
     const angle = Math.random() * 2 * Math.PI;
     const hunter = new Hunter();
 
-    ecs.create().add(
-        new Position(Math.random() * view.width, Math.random() * view.height, angle),
-        new Collider(),
-        new Velocity().from(vecFromAngle(angle).mul(hunter.speed)),
-        hunter,
-        new Exhaust(1 / 60),
-        new Attractor(30, 100),
-        sprite,
-    );
+    world
+        .create()
+        .add(
+            new Position(Math.random() * view.width, Math.random() * view.height, angle),
+            new Greed(),
+            new Velocity().from(vecFromAngle(angle).mul(hunter.speed)),
+            hunter,
+            new Exhaust(1 / 60),
+            new Attractor(30, 100),
+            sprite,
+        );
 }
 
-const spritesQuery = ecs.query(Sprite);
-const sprites = document.getElementById('sprites');
+const spritesQuery = world.query(Sprite);
+const info = document.getElementById('info');
 
 let i = 0;
 let last = 0;
@@ -227,6 +230,8 @@ const loop = () => {
         statistics[system.constructor.name] = getNow() - begin;
     });
 
+    scene.render();
+
     stats.end();
 
     if (!(i++ % 20)) {
@@ -241,7 +246,7 @@ const loop = () => {
         s += `\nTotal: ${total.toFixed(1)} ms\n`;
         s += `\nEntities: ${spritesQuery.length}`;
 
-        sprites.innerHTML = `<pre>${s}</pre>`;
+        info.textContent = s;
     }
 
     requestAnimationFrame(loop);

@@ -9,16 +9,16 @@ import {
     Transform,
     Exhaust,
     Attractor,
-    Collider,
+    Greed,
 } from './components';
 
 export class MovementSystem {
-    constructor(ecs) {
-        this.query = ecs.query(Position, Velocity);
+    constructor(world) {
+        this.query = world.query(Position, Velocity);
     }
 
     update(delta) {
-        this.query.iterate((entity, [position, velocity]) => {
+        this.query.iterate(([position, velocity]) => {
             position.x += velocity.x * delta;
             position.y += velocity.y * delta;
             position.rotation += velocity.rotation * delta;
@@ -74,15 +74,15 @@ const deathTransform = {
 };
 
 export class ExhaustProcessor {
-    constructor(ecs, frame, layer) {
-        this.ecs = ecs;
+    constructor(world, frame, layer) {
+        this.world = world;
         this.frame = frame;
         this.layer = layer;
-        this.query = ecs.query(Exhaust, Position);
+        this.query = world.query(Exhaust, Position);
     }
 
     update(delta) {
-        this.query.iterate((entity, [exhaust, position]) => {
+        this.query.iterate(([exhaust, position]) => {
             exhaust.cooldown -= delta;
 
             if (exhaust.cooldown <= 0) {
@@ -94,7 +94,7 @@ export class ExhaustProcessor {
                 });
                 this.layer.add(sprite);
 
-                this.ecs
+                this.world
                     .create()
                     .add(
                         new Position().from(position).sub(offset),
@@ -110,21 +110,25 @@ export class ExhaustProcessor {
 }
 
 export class AttractorProcessor {
-    constructor(ecs) {
-        const query = ecs.query(Hunter, Position, Attractor);
+    constructor(world) {
+        const query = world.query(Hunter, Position, Attractor);
 
         this.update = (delta) => {
-            query.iterate((entity, [hunter, hunterPosition, attractor]) => {
-                const [bounty, position] = hunter.target?.get(Bounty, Position) || [];
+            query.iterate(([hunter, hunterPosition, attractor]) => {
+                if (!hunter.target?.exists) {
+                    return;
+                }
+
+                const [bounty, bountyPosition] = hunter.target.get(Bounty, Position);
 
                 if (
                     bounty &&
-                    position &&
-                    hunterPosition.distanceSq(position) < attractor.radius ** 2
+                    bountyPosition &&
+                    hunterPosition.distanceSq(bountyPosition) < attractor.radius ** 2
                 ) {
-                    const vec = hunterPosition.clone().sub(position);
+                    const vec = hunterPosition.clone().sub(bountyPosition);
                     const speed = attractor.speed * (1 + 3 * (1 - vec.length() / attractor.radius));
-                    position.add(vec.norm().mul(speed * delta));
+                    bountyPosition.add(vec.norm().mul(speed * delta));
                 }
             });
         };
@@ -132,20 +136,32 @@ export class AttractorProcessor {
 }
 
 export class SpaceUpdater {
-    constructor(ecs, spaceManager) {
-        const query = ecs.query(Position, Collider);
+    constructor(world, spaceManager) {
+        this.query = world.query(Position, Greed);
+        this.spaceManager = spaceManager;
+    }
 
-        this.update = () => query.iterate(spaceManager.update);
+    update() {
+        this.query.iterate(([{ x, y }, greed], entity) => {
+            const cell = this.spaceManager.getCell(x, y);
+
+            cell.add(entity);
+
+            const greedCell = greed.cell;
+            greed.cell = cell;
+
+            greedCell && greedCell !== cell && greedCell.delete(entity);
+        });
     }
 }
 
 export class TransformSystem {
-    constructor(ecs) {
-        this.query = ecs.query(Transform);
+    constructor(world) {
+        this.query = world.query(Transform);
     }
 
     update(delta) {
-        this.query.iterate((entity, transform) => {
+        this.query.iterate((transform, entity) => {
             transform.remaining -= delta;
 
             if (transform.remaining <= 0) {
@@ -170,8 +186,8 @@ export class TransformSystem {
 }
 
 export class IntersectionProcessor {
-    constructor(ecs, explosionFrame, particleLayer) {
-        const query = ecs.query(Hunter, Position);
+    constructor(world, explosionFrame, particleLayer) {
+        const query = world.query(Hunter, Position);
         const explosionColors = [0x33658a, 0x86bbd8];
 
         const fireTransforms = [
@@ -181,7 +197,7 @@ export class IntersectionProcessor {
         ];
 
         this.update = () => {
-            query.iterate((entity, [hunter]) => {
+            query.iterate(([hunter]) => {
                 if (hunter.target && hunter.distance < 10 ** 2) {
                     const bounty = hunter.target;
 
@@ -200,12 +216,14 @@ export class IntersectionProcessor {
                                 sprite.tint = explosionColors[Math.round(Math.random())];
                                 particleLayer.add(sprite);
 
-                                ecs.create().add(
-                                    new Position().from(position),
-                                    new Velocity().from(velocity),
-                                    sprite,
-                                    new Transform(fireTransforms[~~(Math.random() * 3)]),
-                                );
+                                world
+                                    .create()
+                                    .add(
+                                        new Position().from(position),
+                                        new Velocity().from(velocity),
+                                        sprite,
+                                        new Transform(fireTransforms[~~(Math.random() * 3)]),
+                                    );
                             }
                         }
                     }
@@ -219,10 +237,10 @@ export class IntersectionProcessor {
 }
 
 export class TargetingSystem {
-    constructor(ecs, spaceManager) {
+    constructor(world, spaceManager) {
         this.spaceManager = spaceManager;
-        this.hunters = ecs.query(Hunter, Position);
-        this.bounties = ecs.query(Bounty, Position);
+        this.hunters = world.query(Hunter, Position);
+        this.bounties = world.query(Bounty, Position);
     }
 
     targetNearestBounty(hunter, hunterPosition, radius) {
@@ -260,7 +278,7 @@ export class TargetingSystem {
     }
 
     update() {
-        this.hunters.iterate((hunterEntity, [hunter, hunterPosition]) => {
+        this.hunters.iterate(([hunter, hunterPosition]) => {
             if (hunter.target) {
                 this.targetNearestBounty(hunter, hunterPosition, 200);
                 return;
@@ -273,7 +291,7 @@ export class TargetingSystem {
             let bountyDistance = Infinity;
             let bountyCandidat = null;
 
-            this.bounties.iterate((bountyEntity, [bounty, bountyPosition]) => {
+            this.bounties.iterate(([bounty, bountyPosition], bountyEntity) => {
                 if (bounty.targeted) {
                     return;
                 }
@@ -293,7 +311,7 @@ export class TargetingSystem {
             }
         });
 
-        // this.bounties.iterate((bountyEntity, [bounty]) => {
+        // this.bounties.iterate(([bounty], bountyEntity) => {
         //     const sprite = bountyEntity.get(Sprite);
         //     if (bounty.targeted) {
         //         sprite.tint = 0xff6666;
@@ -304,13 +322,13 @@ export class TargetingSystem {
     }
 }
 
-export class HuterControlSystem {
-    constructor(ecs) {
-        this.hunters = ecs.query(Hunter, Position, Velocity);
+export class HunterControlSystem {
+    constructor(world) {
+        this.hunters = world.query(Hunter, Position, Velocity);
     }
 
     update(delta) {
-        this.hunters.iterate((entity, [hunter, position, velocity]) => {
+        this.hunters.iterate(([hunter, position, velocity]) => {
             const { target, speed, agi } = hunter;
 
             if (target?.exists) {
@@ -334,13 +352,13 @@ export class HuterControlSystem {
 }
 
 export class Spawner {
-    constructor(ecs, scene, amount, frame) {
-        this.ecs = ecs;
+    constructor(world, scene, amount, frame) {
+        this.world = world;
         this.amount = amount;
         this.frame = frame;
         this.canvas = scene.gl.canvas;
         this.layer = scene.layer(2);
-        this.query = ecs.query(Bounty);
+        this.query = world.query(Bounty);
     }
 
     update() {
@@ -353,7 +371,7 @@ export class Spawner {
             sprite.scale.set();
             this.layer.add(sprite);
 
-            this.ecs
+            this.world
                 .create()
                 .add(
                     new Position(
@@ -361,7 +379,7 @@ export class Spawner {
                         padding + Math.random() * (height - padding * 2),
                         Math.random() * 2 * Math.PI,
                     ),
-                    new Collider(),
+                    new Greed(),
                     new Velocity(signRandom(30), signRandom(30), signRandom(2) * Math.PI),
                     new Bounty(),
                     sprite,
@@ -372,18 +390,15 @@ export class Spawner {
 }
 
 export class Render {
-    constructor(ecs, scene) {
-        this.scene = scene;
-        this.query = ecs.query(Position, Sprite);
+    constructor(world) {
+        this.query = world.query(Position, Sprite);
     }
 
     update() {
-        this.query.iterate((entity, [position, sprite]) => {
+        this.query.iterate(([position, sprite]) => {
             sprite.position.x = position.x;
             sprite.position.y = position.y;
             sprite.rotation = position.rotation;
         });
-
-        this.scene.render();
     }
 }

@@ -55,7 +55,7 @@ export class Hunter {
     }
 }
 
-export class Collider {
+export class Greed {
     constructor() {
         this.cell = null;
     }

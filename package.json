@@ -1,10 +1,12 @@
 {
     "name": "js13k-ecs",
-    "description": "Tiny < 1kb entity component system, designed for js13k",
+    "type": "module",
+    "description": "Tiny <700b entity component system, designed for js13kGames",
     "keywords": [
         "entity component system",
         "ecs",
-        "js13k"
+        "js13k",
+        "js13kGames"
     ],
     "repository": "github:kutuluk/js13k-ecs",
     "author": "Evgeniy Pavlov <mail@kutuluk.com>",
@@ -12,9 +14,12 @@
     "version": "1.0",
     "source": "src/ecs.js",
     "main": "./dist/ecs.cjs",
+    "module": "./dist/ecs.js",
     "umd:main": "./dist/ecs.umd.js",
-    "module": "./dist/ecs.mjs",
-    "exports": "./dist/ecs.modern.mjs",
+    "exports": {
+        "require": "./dist/ecs.cjs",
+        "default": "./dist/ecs.modern.js"
+    },
     "mangle": {
         "regex": "^_"
     },
@@ -29,7 +34,6 @@
         "build": "npm-run-all --silent clean microbundle",
         "format": "npx prettier . --write",
         "dev": "npm-run-all --silent clean microbundle example",
-        "lint": "eslint src",
         "check": "npm-check -u",
         "release": "npm install && npm-run-all --silent lint build example && npm publish"
     },
@@ -39,7 +43,7 @@
         "mkdirp": "^3.0.1",
         "npm-check": "^6.0.1",
         "npm-run-all": "^4.1.5",
-        "prettier": "^3.5.3",
-        "rimraf": "^6.0.1"
+        "prettier": "^3.8.3",
+        "rimraf": "^6.1.3"
     }
 }

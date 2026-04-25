@@ -1,7 +1,7 @@
 class Vector {
-    constructor(x, y) {
-        this.x = x || 0;
-        this.y = y || 0;
+    constructor(x = 0, y = x) {
+        this.x = x;
+        this.y = y;
     }
 
     from(obj) {
