@@ -8,7 +8,10 @@
         "js13k",
         "js13kGames"
     ],
-    "repository": "github:kutuluk/js13k-ecs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kutuluk/js13k-ecs.git"
+    },
     "author": "Evgeniy Pavlov <mail@kutuluk.com>",
     "license": "MIT",
     "version": "1.0.0",
